@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forkfast Kiosk — Self-Order Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1B2430;
+    --ink-soft:#4B5568;
+    --paper:#FFF6ED;
+    --panel:#FFFFFF;
+    --line:#E7DDCF;
+    --amber:#F5A623;
+    --amber-ink:#5A3B00;
+    --teal:#0F6B63;
+    --rust:#C1440E;
+    --olive:#748A5E;
+    --plum:#7B4B94;
+    --danger:#C23B3B;
+    --focus:#1B2430;
+    --shadow: 0 10px 30px rgba(27,36,48,0.10);
+    --radius: 18px;
+    --scale: 1;
+  }
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      --ink:#F3EEE3;
+      --ink-soft:#C9C2B4;
+      --paper:#151A22;
+      --panel:#1E2530;
+      --line:#323B49;
+      --panel-shadow: rgba(0,0,0,0.5);
+      --shadow: 0 10px 30px rgba(0,0,0,0.45);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#F3EEE3;
+    --ink-soft:#C9C2B4;
+    --paper:#151A22;
+    --panel:#1E2530;
+    --line:#323B49;
+    --shadow: 0 10px 30px rgba(0,0,0,0.45);
+  }
+  [data-contrast="high"]{
+    --ink:#000000;
+    --paper:#FFFFFF;
+    --panel:#FFFFFF;
+    --line:#000000;
+    --amber:#946200;
+    --teal:#003D38;
+    --rust:#7A2500;
+    --olive:#334322;
+    --plum:#3E1E52;
+    --ink-soft:#000000;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    font-size:calc(16px * var(--scale));
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+  }
+  h1,h2,h3,.display{
+    font-family:'Archivo',system-ui,sans-serif;
+    letter-spacing:-0.01em;
+    margin:0;
+  }
+  button{font-family:inherit;cursor:pointer;}
+  button:focus-visible, [tabindex]:focus-visible, a:focus-visible {
+    outline:3px solid var(--focus);
+    outline-offset:2px;
+  }
+  img{max-width:100%;}
+  .app{max-width:900px;margin:0 auto;width:100%;flex:1;display:flex;flex-direction:column;min-height:100vh;}
+
+  /* ---- Top chrome ---- */
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 18px;border-bottom:1px solid var(--line);
+    background:var(--panel);
+  }
+  .brand{display:flex;align-items:center;gap:10px;font-family:'Archivo';font-weight:800;font-size:1.25rem;}
+  .brand .dot{width:12px;height:12px;border-radius:50%;background:var(--amber);}
+  .topbar-actions{display:flex;gap:8px;align-items:center;}
+  .chip-btn{
+    border:1.5px solid var(--line);background:var(--panel);color:var(--ink);
+    border-radius:999px;padding:8px 14px;font-size:0.85rem;font-weight:600;
+    display:flex;align-items:center;gap:6px;
+  }
+  .chip-btn[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+
+  .progress{display:flex;align-items:center;gap:6px;padding:10px 18px;background:var(--panel);border-bottom:1px solid var(--line);}
+  .progress .step{display:flex;align-items:center;gap:6px;font-size:0.78rem;color:var(--ink-soft);font-weight:600;}
+  .progress .step .bubble{width:22px;height:22px;border-radius:50%;background:var(--line);color:var(--ink-soft);display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:700;}
+  .progress .step.active .bubble{background:var(--amber);color:var(--amber-ink);}
+  .progress .step.done .bubble{background:var(--teal);color:white;}
+  .progress .step.active{color:var(--ink);}
+  .progress .sep{flex:1;height:2px;background:var(--line);margin:0 4px;}
+
+  main{flex:1;display:flex;flex-direction:column;padding:20px 18px 120px;gap:18px;}
+
+  /* ---- Welcome ---- */
+  .welcome{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:26px;padding:20px 0;}
+  .welcome .display{font-size:clamp(2rem,7vw,3.4rem);font-weight:900;line-height:1.05;}
+  .welcome p.lead{color:var(--ink-soft);font-size:1.05rem;max-width:38ch;}
+  .cta-primary{
+    background:var(--amber);color:var(--amber-ink);border:none;
+    padding:26px 48px;border-radius:999px;font-weight:800;font-size:1.3rem;
+    box-shadow:var(--shadow);
+    min-height:88px;min-width:280px;
+  }
+  .cta-primary:active{transform:scale(0.98);}
+  .welcome-options{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;}
+
+  /* ---- Menu ---- */
+  .cat-tabs{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;}
+  .cat-tab{
+    flex:0 0 auto;border:1.5px solid var(--line);background:var(--panel);
+    padding:12px 18px;border-radius:999px;font-weight:700;font-size:0.9rem;color:var(--ink);
+    min-height:48px;white-space:nowrap;
+  }
+  .cat-tab[aria-selected="true"]{background:var(--cat-color,var(--ink));color:white;border-color:var(--cat-color,var(--ink));}
+
+  .item-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;}
+  .item-card{
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:16px;display:flex;flex-direction:column;gap:8px;text-align:left;
+    box-shadow:var(--shadow);min-height:180px;position:relative;
+  }
+  .item-icon{font-size:2.4rem;line-height:1;}
+  .item-name{font-weight:700;font-size:1rem;}
+  .item-desc{color:var(--ink-soft);font-size:0.82rem;line-height:1.3;flex:1;}
+  .item-row{display:flex;align-items:center;justify-content:space-between;margin-top:4px;}
+  .item-price{font-weight:800;font-family:'Archivo';font-size:1.05rem;}
+  .add-btn{
+    background:var(--ink);color:var(--paper);border:none;border-radius:999px;
+    width:42px;height:42px;font-size:1.4rem;font-weight:700;flex:0 0 auto;
+  }
+
+  /* ---- Modal ---- */
+  .overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:flex-end;justify-content:center;
+    z-index:50;
+  }
+  @media (min-width:640px){ .overlay{align-items:center;} }
+  .sheet{
+    background:var(--panel);width:100%;max-width:520px;border-radius:24px 24px 0 0;
+    padding:24px;max-height:88vh;overflow-y:auto;box-shadow:var(--shadow);
+  }
+  @media (min-width:640px){ .sheet{border-radius:24px;} }
+  .sheet h2{font-size:1.4rem;margin-bottom:4px;}
+  .sheet-close{position:absolute;top:14px;right:14px;}
+  .opt-group{margin:16px 0;}
+  .opt-label{font-weight:700;font-size:0.85rem;color:var(--ink-soft);margin-bottom:8px;display:block;}
+  .opt-choice{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px;border:1.5px solid var(--line);border-radius:12px;margin-bottom:8px;min-height:56px;
+  }
+  .opt-choice input{width:20px;height:20px;}
+  .stepper{display:flex;align-items:center;gap:14px;}
+  .stepper button{width:44px;height:44px;border-radius:50%;border:1.5px solid var(--line);background:var(--panel);font-size:1.3rem;font-weight:700;color:var(--ink);}
+  .sheet-footer{position:sticky;bottom:-24px;background:var(--panel);padding-top:14px;margin-top:10px;}
+  .full-btn{
+    width:100%;background:var(--ink);color:var(--paper);border:none;padding:18px;border-radius:14px;
+    font-weight:800;font-size:1.05rem;min-height:60px;
+  }
+  .ghost-btn{
+    width:100%;background:transparent;color:var(--ink);border:1.5px solid var(--line);padding:16px;border-radius:14px;
+    font-weight:700;font-size:0.95rem;min-height:56px;
+  }
+
+  /* ---- Cart bar ---- */
+  .cart-bar{
+    position:fixed;bottom:0;left:0;right:0;background:var(--ink);color:var(--paper);
+    display:flex;align-items:center;justify-content:space-between;
+    padding:16px 20px;z-index:40;
+  }
+  .cart-bar-inner{max-width:900px;margin:0 auto;width:100%;display:flex;align-items:center;justify-content:space-between;}
+  .cart-bar button{background:var(--amber);color:var(--amber-ink);border:none;border-radius:999px;padding:14px 24px;font-weight:800;font-size:1rem;min-height:52px;}
+  .cart-bar .info{font-weight:700;}
+  .cart-bar .info small{display:block;font-weight:500;opacity:0.75;font-size:0.78rem;}
+
+  /* ---- Cart screen ---- */
+  .cart-line{
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;
+    display:flex;justify-content:space-between;align-items:center;gap:10px;
+  }
+  .cart-line .meta small{color:var(--ink-soft);display:block;font-size:0.78rem;}
+  .cart-line .qty-controls{display:flex;align-items:center;gap:10px;}
+  .cart-line .qty-controls button{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--line);background:var(--panel);font-weight:700;}
+  .remove-link{background:none;border:none;color:var(--danger);font-weight:700;font-size:0.8rem;text-decoration:underline;padding:8px;}
+  .totals{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;}
+  .totals-row{display:flex;justify-content:space-between;padding:6px 0;font-size:0.95rem;color:var(--ink-soft);}
+  .totals-row.grand{color:var(--ink);font-weight:800;font-size:1.2rem;border-top:1px solid var(--line);margin-top:6px;padding-top:12px;}
+  .empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--ink-soft);text-align:center;padding:40px 0;}
+
+  /* ---- Pay screen ---- */
+  .pay-card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:28px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:16px;}
+  .card-swipe-icon{font-size:3.4rem;}
+  .spinner{width:40px;height:40px;border:5px solid var(--line);border-top-color:var(--amber);border-radius:50%;animation:spin 0.9s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .status-text{font-weight:700;font-size:1.05rem;}
+
+  /* ---- Confirmation ---- */
+  .confirm-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;}
+  .order-num{font-family:'Archivo';font-weight:900;font-size:clamp(3rem,14vw,5rem);color:var(--teal);}
+
+  .toast{
+    position:fixed;top:16px;left:50%;transform:translateX(-50%);
+    background:var(--ink);color:var(--paper);padding:12px 20px;border-radius:999px;
+    font-weight:600;font-size:0.9rem;z-index:100;box-shadow:var(--shadow);
+    max-width:90vw;text-align:center;
+  }
+
+  .idle-modal{max-width:380px;text-align:center;}
+  .idle-count{font-family:'Archivo';font-weight:900;font-size:2.6rem;color:var(--rust);}
+
+  .notes-fab{
+    position:fixed;bottom:96px;right:16px;background:var(--panel);border:1.5px solid var(--line);
+    width:44px;height:44px;border-radius:50%;font-size:1.1rem;z-index:30;box-shadow:var(--shadow);
+  }
+  .cat-Combos{--cat-color:var(--amber);}
+  .cat-Burgers{--cat-color:var(--rust);}
+  .cat-Sides{--cat-color:var(--olive);}
+  .cat-Drinks{--cat-color:var(--teal);}
+  .cat-Desserts{--cat-color:var(--plum);}
+
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);}
+  ::-webkit-scrollbar{height:6px;width:6px;}
+</style>
+</head>
+<body>
+<div id="root" class="app"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------------- DATA ----------------
+  const T = {
+    en: {
+      brand:"Forkfast", tap_to_start:"Tap to start your order",
+      lead:"Touch anywhere on the screen to begin. Your order is ready in minutes.",
+      pickup_note:"For pickup at this counter",
+      large_text:"Large text", high_contrast:"High contrast", language:"Español",
+      menu:"Menu", cart:"Cart", pay:"Pay", done:"Done",
+      combos:"Combos", burgers:"Burgers", sides:"Sides", drinks:"Drinks", desserts:"Desserts",
+      add:"Add", size:"Size", addons:"Add-ons (optional)", qty:"Quantity",
+      add_to_cart:"Add to cart", cancel:"Cancel", your_cart:"Your cart",
+      empty_cart_title:"Your cart is empty", empty_cart_sub:"Browse the menu and tap + to add items.",
+      back_to_menu:"Back to menu", checkout:"Checkout", subtotal:"Subtotal", tax:"Tax", total:"Total",
+      remove:"Remove", pay_title:"Ready to pay", pay_sub:"Tap or insert your card below.",
+      simulate_tap:"Simulate card tap", processing:"Processing payment…",
+      declined:"Card declined. Please try again.", try_again:"Try again",
+      order_confirmed:"Order confirmed", your_number:"Your order number", eta:"Ready in about",
+      eta_min:"6–8 minutes", new_order:"Start a new order", cancel_order:"Cancel order",
+      cancel_confirm_title:"Cancel this order?", cancel_confirm_sub:"Your cart will be cleared.",
+      keep_order:"No, keep order", yes_cancel:"Yes, cancel", help:"Call for help",
+      help_toast:"A team member has been notified and is on the way.",
+      idle_title:"Still there?", idle_sub:"Your order will be cleared for the next guest.",
+      im_here:"I'm still here", notes:"About this design",
+    },
+    es: {
+      brand:"Forkfast", tap_to_start:"Toca para comenzar tu pedido",
+      lead:"Toca la pantalla para comenzar. Tu pedido estará listo en minutos.",
+      pickup_note:"Para recoger en este mostrador",
+      large_text:"Texto grande", high_contrast:"Alto contraste", language:"English",
+      menu:"Menú", cart:"Carrito", pay:"Pagar", done:"Listo",
+      combos:"Combos", burgers:"Hamburguesas", sides:"Acompañamientos", drinks:"Bebidas", desserts:"Postres",
+      add:"Añadir", size:"Tamaño", addons:"Extras (opcional)", qty:"Cantidad",
+      add_to_cart:"Añadir al carrito", cancel:"Cancelar", your_cart:"Tu carrito",
+      empty_cart_title:"Tu carrito está vacío", empty_cart_sub:"Explora el menú y toca + para añadir.",
+      back_to_menu:"Volver al menú", checkout:"Pagar ahora", subtotal:"Subtotal", tax:"Impuesto", total:"Total",
+      remove:"Quitar", pay_title:"Listo para pagar", pay_sub:"Toca o inserta tu tarjeta abajo.",
+      simulate_tap:"Simular tarjeta", processing:"Procesando pago…",
+      declined:"Tarjeta rechazada. Intenta de nuevo.", try_again:"Intentar de nuevo",
+      order_confirmed:"Pedido confirmado", your_number:"Tu número de pedido", eta:"Listo en",
+      eta_min:"6–8 minutos", new_order:"Nuevo pedido", cancel_order:"Cancelar pedido",
+      cancel_confirm_title:"¿Cancelar este pedido?", cancel_confirm_sub:"Se vaciará tu carrito.",
+      keep_order:"No, mantener", yes_cancel:"Sí, cancelar", help:"Pedir ayuda",
+      help_toast:"Un empleado ha sido notificado y ya viene.",
+      idle_title:"¿Sigues ahí?", idle_sub:"Tu pedido se borrará para el siguiente cliente.",
+      im_here:"Sigo aquí", notes:"Sobre este diseño",
+    }
+  };
+
+  const MENU = [
+    {id:'c1', cat:'Combos', icon:'🍔', name:'Classic Combo', price:8.49, desc:'Signature burger, fries, and a drink.', sizes:[{n:'Regular',d:0},{n:'Large',d:1.50}]},
+    {id:'c2', cat:'Combos', icon:'🌯', name:'Wrap Combo', price:7.99, desc:'Grilled chicken wrap, fries, and a drink.', sizes:[{n:'Regular',d:0},{n:'Large',d:1.50}]},
+    {id:'b1', cat:'Burgers', icon:'🍔', name:'Smokehouse Burger', price:6.29, desc:'Beef patty, cheddar, smoky sauce.', addons:[{n:'Extra cheese',p:0.75},{n:'Bacon',p:1.25},{n:'Extra patty',p:1.75}]},
+    {id:'b2', cat:'Burgers', icon:'🧆', name:'Veggie Burger', price:5.99, desc:'Plant-based patty, lettuce, tomato.', addons:[{n:'Extra cheese',p:0.75},{n:'Avocado',p:1.00}]},
+    {id:'s1', cat:'Sides', icon:'🍟', name:'Crispy Fries', price:2.99, desc:'Golden, salted, always hot.', sizes:[{n:'Small',d:0},{n:'Medium',d:0.80},{n:'Large',d:1.50}]},
+    {id:'s2', cat:'Sides', icon:'🧅', name:'Onion Rings', price:3.49, desc:'Battered and fried to order.'},
+    {id:'d1', cat:'Drinks', icon:'🥤', name:'Fountain Soda', price:2.29, desc:'Choose your flavor at the counter.', sizes:[{n:'Small',d:0},{n:'Medium',d:0.50},{n:'Large',d:1.00}]},
+    {id:'d2', cat:'Drinks', icon:'🧃', name:'Fresh Lemonade', price:2.79, desc:'Made fresh daily.'},
+    {id:'e1', cat:'Desserts', icon:'🍦', name:'Soft Serve Cone', price:2.49, desc:'Vanilla or chocolate swirl.'},
+    {id:'e2', cat:'Desserts', icon:'🍪', name:'Cookie', price:1.79, desc:'Warm, chocolate chip.'},
+  ];
+  const CATS = ['Combos','Burgers','Sides','Drinks','Desserts'];
+  const TAX_RATE = 0.0825;
+  const IDLE_WARN_MS = 40000;
+  const IDLE_COUNTDOWN = 12;
+
+  // ---------------- STATE ----------------
+  let state = {
+    screen:'welcome', lang:'en', scale:1, contrast:false, theme:null,
+    cat:'Combos', cart:[], modalItem:null, payStatus:null,
+    orderNum:null, toast:null, showCancelConfirm:false, idleWarn:false,
+    idleSecondsLeft:IDLE_COUNTDOWN, showNotes:false,
+  };
+  let idleTimer=null, idleCountdownTimer=null, toastTimer=null;
+
+  function t(k){ return T[state.lang][k]; }
+  function money(n){ return '$'+n.toFixed(2); }
+
+  function setState(patch){
+    Object.assign(state, patch);
+    render();
+    resetIdle();
+  }
+
+  // ---------------- IDLE / PRIVACY RESET ----------------
+  function resetIdle(){
+    clearTimeout(idleTimer);
+    clearInterval(idleCountdownTimer);
+    if(state.idleWarn) return;
+    if(state.screen==='welcome') return;
+    idleTimer = setTimeout(triggerIdleWarning, IDLE_WARN_MS);
+  }
+  function triggerIdleWarning(){
+    state.idleWarn = true;
+    state.idleSecondsLeft = IDLE_COUNTDOWN;
+    render();
+    idleCountdownTimer = setInterval(()=>{
+      state.idleSecondsLeft -= 1;
+      if(state.idleSecondsLeft<=0){
+        clearInterval(idleCountdownTimer);
+        hardReset();
+      } else {
+        render();
+      }
+    },1000);
+  }
+  function dismissIdle(){
+    state.idleWarn=false;
+    render();
+    resetIdle();
+  }
+  function hardReset(){
+    state = {...state, screen:'welcome', cart:[], modalItem:null, payStatus:null,
+      orderNum:null, showCancelConfirm:false, idleWarn:false};
+    render();
+  }
+
+  // ---------------- CART LOGIC ----------------
+  function cartCount(){ return state.cart.reduce((s,l)=>s+l.qty,0); }
+  function lineTotal(l){ return (l.unitPrice)*l.qty; }
+  function subtotal(){ return state.cart.reduce((s,l)=>s+lineTotal(l),0); }
+  function tax(){ return subtotal()*TAX_RATE; }
+  function grandTotal(){ return subtotal()+tax(); }
+
+  function addToCart(item, size, addons, qty){
+    const sizeDelta = size ? size.d : 0;
+    const addonsTotal = (addons||[]).reduce((s,a)=>s+a.p,0);
+    const unitPrice = item.price + sizeDelta + addonsTotal;
+    const label = [size?size.n:null, (addons&&addons.length)?addons.map(a=>a.n).join(', '):null].filter(Boolean).join(' • ');
+    state.cart.push({
+      key: item.id+'-'+Date.now()+Math.random(),
+      name:item.name, icon:item.icon, unitPrice, qty, label
+    });
+    showToast((state.lang==='en'?'Added to cart: ':'Añadido: ')+item.name);
+  }
+  function changeQty(key, delta){
+    const line = state.cart.find(l=>l.key===key);
+    if(!line) return;
+    line.qty += delta;
+    if(line.qty<=0) state.cart = state.cart.filter(l=>l.key!==key);
+    render(); resetIdle();
+  }
+  function removeLine(key){
+    state.cart = state.cart.filter(l=>l.key!==key);
+    render(); resetIdle();
+  }
+
+  function showToast(msg){
+    state.toast = msg;
+    render();
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=>{ state.toast=null; render(); }, 2400);
+  }
+
+  // ---------------- PAYMENT SIMULATION ----------------
+  function simulatePayment(){
+    state.payStatus='processing';
+    render();
+    setTimeout(()=>{
+      const success = Math.random() > 0.18; // ~82% approve, to demo error recovery
+      if(success){
+        state.payStatus='approved';
+        state.orderNum = String(Math.floor(100+Math.random()*899));
+        render();
+        setTimeout(()=>setState({screen:'confirm', payStatus:null}), 900);
+      } else {
+        state.payStatus='declined';
+        render();
+      }
+    }, 1600);
+  }
+
+  // ---------------- RENDER HELPERS ----------------
+  function el(html){
+    const d = document.createElement('div');
+    d.innerHTML = html.trim();
+    return d.firstElementChild;
+  }
+
+  function Progress(){
+    const steps = [['menu',t('menu')],['cart',t('cart')],['pay',t('pay')],['confirm',t('done')]];
+    const order = ['menu','cart','pay','confirm'];
+    const curIdx = order.indexOf(state.screen);
+    if(state.screen==='welcome') return '';
+    return `<div class="progress" role="list" aria-label="Order progress">` +
+      steps.map(([id,label],i)=>{
+        const idx = order.indexOf(id);
+        const cls = idx===curIdx ? 'active' : (idx<curIdx ? 'done':'');
+        const bubble = idx<curIdx ? '✓' : (i+1);
+        const sep = i < steps.length-1 ? '<div class="sep"></div>' : '';
+        return `<div class="step ${cls}" role="listitem"><div class="bubble">${bubble}</div><span>${label}</span></div>${sep}`;
+      }).join('') + `</div>`;
+  }
+
+  function TopBar(){
+    return `<div class="topbar">
+      <div class="brand"><span class="dot"></span> ${t('brand')}</div>
+      <div class="topbar-actions">
+        ${state.screen!=='welcome' && state.screen!=='confirm' ? `<button class="chip-btn" data-action="cancel-order" aria-label="${t('cancel_order')}">✕ ${t('cancel_order')}</button>` : ''}
+        <button class="chip-btn" data-action="help">🛎️ ${t('help')}</button>
+      </div>
+    </div>`;
+  }
+
+  function Welcome(){
+    return `<div class="welcome">
+      <div class="display">${t('tap_to_start')}</div>
+      <p class="lead">${t('lead')}</p>
+      <button class="cta-primary" data-action="start">${state.lang==='en'?'Start order':'Comenzar pedido'} →</button>
+      <div class="welcome-options">
+        <button class="chip-btn" data-action="toggle-lang">🌐 ${t('language')}</button>
+        <button class="chip-btn" aria-pressed="${state.scale>1}" data-action="toggle-scale">🔎 ${t('large_text')}</button>
+        <button class="chip-btn" aria-pressed="${state.contrast}" data-action="toggle-contrast">◐ ${t('high_contrast')}</button>
+      </div>
+    </div>`;
+  }
+
+  function ItemCard(item){
+    return `<button class="item-card" data-action="open-item" data-id="${item.id}" aria-label="${item.name}, ${money(item.price)}">
+      <div class="item-icon" aria-hidden="true">${item.icon}</div>
+      <div class="item-name">${item.name}</div>
+      <div class="item-desc">${item.desc}</div>
+      <div class="item-row">
+        <span class="item-price">${money(item.price)}</span>
+        <span class="add-btn" aria-hidden="true">+</span>
+      </div>
+    </button>`;
+  }
+
+  function MenuScreen(){
+    const items = MENU.filter(m=>m.cat===state.cat);
+    return `
+      <div class="cat-tabs" role="tablist" aria-label="Menu categories">
+        ${CATS.map(c=>`<button class="cat-tab cat-${c}" role="tab" aria-selected="${c===state.cat}" data-action="set-cat" data-cat="${c}">${t(c.toLowerCase())}</button>`).join('')}
+      </div>
+      <div class="item-grid">${items.map(ItemCard).join('')}</div>
+    `;
+  }
+
+  function ItemModal(){
+    const item = MENU.find(m=>m.id===state.modalItem.id);
+    const sel = state.modalItem;
+    const sizes = item.sizes || [];
+    const addons = item.addons || [];
+    return `<div class="overlay" data-action="close-modal-bg">
+      <div class="sheet" role="dialog" aria-modal="true" aria-label="${item.name}" onclick="event.stopPropagation()" data-stop="1">
+        <h2>${item.icon} ${item.name}</h2>
+        <p class="item-desc">${item.desc}</p>
+        ${sizes.length ? `<div class="opt-group">
+          <span class="opt-label">${t('size')}</span>
+          ${sizes.map((s,i)=>`<label class="opt-choice">
+            <span>${s.n}${s.d>0?` (+${money(s.d)})`:''}</span>
+            <input type="radio" name="size" data-action="pick-size" data-idx="${i}" ${sel.sizeIdx===i?'checked':''}>
+          </label>`).join('')}
+        </div>` : ''}
+        ${addons.length ? `<div class="opt-group">
+          <span class="opt-label">${t('addons')}</span>
+          ${addons.map((a,i)=>`<label class="opt-choice">
+            <span>${a.n} (+${money(a.p)})</span>
+            <input type="checkbox" data-action="toggle-addon" data-idx="${i}" ${sel.addons.includes(i)?'checked':''}>
+          </label>`).join('')}
+        </div>`:''}
+        <div class="opt-group">
+          <span class="opt-label">${t('qty')}</span>
+          <div class="stepper">
+            <button data-action="modal-qty" data-delta="-1" aria-label="Decrease quantity">−</button>
+            <span style="font-weight:800;font-size:1.2rem;min-width:24px;text-align:center;">${sel.qty}</span>
+            <button data-action="modal-qty" data-delta="1" aria-label="Increase quantity">+</button>
+          </div>
+        </div>
+        <div class="sheet-footer">
+          <button class="full-btn" data-action="confirm-add">${t('add_to_cart')} · ${money(modalUnitPrice(item,sel)*sel.qty)}</button>
+          <div style="height:8px"></div>
+          <button class="ghost-btn" data-action="close-modal">${t('cancel')}</button>
+        </div>
+      </div>
+    </div>`;
+  }
+  function modalUnitPrice(item, sel){
+    const size = item.sizes ? item.sizes[sel.sizeIdx ?? 0] : null;
+    const addonsList = (item.addons||[]).filter((_,i)=>sel.addons.includes(i));
+    return item.price + (size?size.d:0) + addonsList.reduce((s,a)=>s+a.p,0);
+  }
+
+  function CartScreen(){
+    if(state.cart.length===0){
+      return `<div class="empty-state">
+        <div style="font-size:3rem;">🧺</div>
+        <h2>${t('empty_cart_title')}</h2>
+        <p>${t('empty_cart_sub')}</p>
+        <button class="cta-primary" style="padding:16px 32px;font-size:1rem;min-height:56px;" data-action="go-menu">${t('back_to_menu')}</button>
+      </div>`;
+    }
+    return `
+      <h2>${t('your_cart')}</h2>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        ${state.cart.map(l=>`<div class="cart-line">
+          <div class="meta">
+            <div style="font-weight:700;">${l.icon} ${l.name}</div>
+            ${l.label ? `<small>${l.label}</small>`:''}
+            <button class="remove-link" data-action="remove-line" data-key="${l.key}">${t('remove')}</button>
+          </div>
+          <div style="text-align:right;">
+            <div class="qty-controls">
+              <button data-action="line-qty" data-key="${l.key}" data-delta="-1" aria-label="Decrease">−</button>
+              <span style="font-weight:700;">${l.qty}</span>
+              <button data-action="line-qty" data-key="${l.key}" data-delta="1" aria-label="Increase">+</button>
+            </div>
+            <div style="font-weight:800;margin-top:6px;">${money(lineTotal(l))}</div>
+          </div>
+        </div>`).join('')}
+      </div>
+      <div class="totals">
+        <div class="totals-row"><span>${t('subtotal')}</span><span>${money(subtotal())}</span></div>
+        <div class="totals-row"><span>${t('tax')}</span><span>${money(tax())}</span></div>
+        <div class="totals-row grand"><span>${t('total')}</span><span>${money(grandTotal())}</span></div>
+      </div>
+      <button class="ghost-btn" data-action="go-menu">+ ${t('back_to_menu')}</button>
+    `;
+  }
+
+  function PayScreen(){
+    let body;
+    if(state.payStatus==='processing'){
+      body = `<div class="spinner" role="status" aria-live="polite"></div><div class="status-text">${t('processing')}</div>`;
+    } else if(state.payStatus==='declined'){
+      body = `<div style="font-size:2.6rem;">⚠️</div>
+        <div class="status-text" style="color:var(--danger);">${t('declined')}</div>
+        <button class="cta-primary" style="padding:16px 30px;font-size:1rem;min-height:56px;" data-action="pay-tap">${t('try_again')}</button>`;
+    } else if(state.payStatus==='approved'){
+      body = `<div style="font-size:2.6rem;">✅</div><div class="status-text">${t('order_confirmed')}</div>`;
+    } else {
+      body = `<div class="card-swipe-icon">💳</div>
+        <div class="status-text">${t('pay_sub')}</div>
+        <button class="cta-primary" style="padding:18px 34px;font-size:1.05rem;min-height:64px;" data-action="pay-tap">${t('simulate_tap')}</button>`;
+    }
+    return `<h2>${t('pay_title')}</h2>
+      <div class="totals" style="margin-bottom:4px;">
+        <div class="totals-row grand" style="border:none;padding:0;margin:0;"><span>${t('total')}</span><span>${money(grandTotal())}</span></div>
+      </div>
+      <div class="pay-card">${body}</div>`;
+  }
+
+  function ConfirmScreen(){
+    return `<div class="confirm-wrap">
+      <div style="font-size:2.6rem;">🎉</div>
+      <h2>${t('order_confirmed')}</h2>
+      <div>
+        <div style="color:var(--ink-soft);font-weight:600;">${t('your_number')}</div>
+        <div class="order-num">${state.orderNum}</div>
+      </div>
+      <p style="color:var(--ink-soft);">${t('eta')} <strong>${t('eta_min')}</strong></p>
+      <button class="cta-primary" data-action="new-order">${t('new_order')}</button>
+    </div>`;
+  }
+
+  function CartBar(){
+    if(state.screen!=='menu' || cartCount()===0) return '';
+    return `<div class="cart-bar"><div class="cart-bar-inner">
+      <div class="info">${cartCount()} ${state.lang==='en'?'items':'artículos'}<small>${money(grandTotal())} · ${state.lang==='en'?'incl. tax':'con impuesto'}</small></div>
+      <button data-action="view-cart">${t('your_cart')} →</button>
+    </div></div>`;
+  }
+  function CartFooterBtn(){
+    if(state.screen!=='cart' || state.cart.length===0) return '';
+    return `<div class="cart-bar"><div class="cart-bar-inner" style="justify-content:flex-end;">
+      <button data-action="checkout" style="width:100%;">${t('checkout')} · ${money(grandTotal())}</button>
+    </div></div>`;
+  }
+
+  function CancelConfirmModal(){
+    return `<div class="overlay" data-action="close-cancel-confirm">
+      <div class="sheet idle-modal" role="alertdialog" aria-modal="true" onclick="event.stopPropagation()">
+        <h2>${t('cancel_confirm_title')}</h2>
+        <p style="color:var(--ink-soft);">${t('cancel_confirm_sub')}</p>
+        <div style="height:10px;"></div>
+        <button class="full-btn" style="background:var(--danger);" data-action="do-cancel-order">${t('yes_cancel')}</button>
+        <div style="height:8px;"></div>
+        <button class="ghost-btn" data-action="close-cancel-confirm">${t('keep_order')}</button>
+      </div>
+    </div>`;
+  }
+
+  function IdleModal(){
+    return `<div class="overlay">
+      <div class="sheet idle-modal" role="alertdialog" aria-modal="true">
+        <h2>${t('idle_title')}</h2>
+        <div class="idle-count" aria-live="assertive">${state.idleSecondsLeft}</div>
+        <p style="color:var(--ink-soft);">${t('idle_sub')}</p>
+        <button class="full-btn" data-action="im-here">${t('im_here')}</button>
+      </div>
+    </div>`;
+  }
+
+  function NotesPanel(){
+    return `<div class="overlay" data-action="close-notes">
+      <div class="sheet" role="dialog" aria-modal="true" onclick="event.stopPropagation()" style="text-align:left;">
+        <h2>${t('notes')}</h2>
+        <p style="color:var(--ink-soft);font-size:0.92rem;line-height:1.5;">
+        This screen is a functional prototype of a self-order kiosk, built to demonstrate User-Centered Design principles for a course/portfolio project:
+        </p>
+        <ul style="font-size:0.9rem;color:var(--ink-soft);line-height:1.6;padding-left:20px;">
+          <li><strong>Visibility of system status</strong> — progress dots, live cart total, payment spinner and toasts.</li>
+          <li><strong>Match to real-world tasks</strong> — flow mirrors ordering at a counter: browse → customize → review → pay → pick up.</li>
+          <li><strong>User control &amp; freedom</strong> — edit/remove items anytime before paying; Cancel order available at every step.</li>
+          <li><strong>Error prevention &amp; recovery</strong> — review-before-pay cart, simulated card decline with a Try again path.</li>
+          <li><strong>Consistency &amp; standards</strong> — one action vocabulary throughout (Add, Remove, Back, Cancel) and one visual language per category.</li>
+          <li><strong>Accessibility</strong> — large-text and high-contrast toggles, 44px+ touch targets, visible focus states, bilingual EN/ES.</li>
+          <li><strong>Privacy &amp; forgiving design</strong> — idle-timeout warning that auto-clears the order, so the next guest never inherits a stranger's cart or payment state.</li>
+        </ul>
+        <button class="ghost-btn" data-action="close-notes">${state.lang==='en'?'Close':'Cerrar'}</button>
+      </div>
+    </div>`;
+  }
+
+  // ---------------- MAIN RENDER ----------------
+  function render(){
+    document.documentElement.setAttribute('data-theme', state.theme || '');
+    document.documentElement.style.setProperty('--scale', state.scale);
+    if(state.contrast) document.body.setAttribute('data-contrast','high');
+    else document.body.removeAttribute('data-contrast');
+
+    let screenHtml = '';
+    if(state.screen==='welcome') screenHtml = Welcome();
+    else if(state.screen==='menu') screenHtml = MenuScreen();
+    else if(state.screen==='cart') screenHtml = CartScreen();
+    else if(state.screen==='pay') screenHtml = PayScreen();
+    else if(state.screen==='confirm') screenHtml = ConfirmScreen();
+
+    const root = document.getElementById('root');
+    root.innerHTML = `
+      ${state.screen!=='welcome' ? TopBar() : ''}
+      ${Progress()}
+      <main>${screenHtml}</main>
+      ${CartBar()}
+      ${CartFooterBtn()}
+      ${state.modalItem ? ItemModal() : ''}
+      ${state.showCancelConfirm ? CancelConfirmModal() : ''}
+      ${state.idleWarn ? IdleModal() : ''}
+      ${state.showNotes ? NotesPanel() : ''}
+      ${state.toast ? `<div class="toast" role="status">${state.toast}</div>` : ''}
+      ${!state.idleWarn ? `<button class="notes-fab" data-action="open-notes" aria-label="${t('notes')}" title="${t('notes')}">ℹ️</button>` : ''}
+    `;
+  }
+
+  // ---------------- EVENT DELEGATION ----------------
+  document.addEventListener('click', function(e){
+    const t = e.target.closest('[data-action]');
+    if(!t) return;
+    const action = t.getAttribute('data-action');
+
+    switch(action){
+      case 'start': setState({screen:'menu'}); break;
+      case 'toggle-lang': setState({lang: state.lang==='en'?'es':'en'}); break;
+      case 'toggle-scale': setState({scale: state.scale>1?1:1.28}); break;
+      case 'toggle-contrast': setState({contrast: !state.contrast}); break;
+      case 'set-cat': setState({cat: t.getAttribute('data-cat')}); break;
+      case 'open-item': {
+        const item = MENU.find(m=>m.id===t.getAttribute('data-id'));
+        setState({modalItem:{id:item.id, sizeIdx: item.sizes?0:null, addons:[], qty:1}});
+        break;
+      }
+      case 'pick-size': {
+        state.modalItem.sizeIdx = parseInt(t.getAttribute('data-idx'),10);
+        render(); resetIdle();
+        break;
+      }
+      case 'toggle-addon': {
+        const idx = parseInt(t.getAttribute('data-idx'),10);
+        const set = new Set(state.modalItem.addons);
+        if(set.has(idx)) set.delete(idx); else set.add(idx);
+        state.modalItem.addons = [...set];
+        render(); resetIdle();
+        break;
+      }
+      case 'modal-qty': {
+        const d = parseInt(t.getAttribute('data-delta'),10);
+        state.modalItem.qty = Math.max(1, state.modalItem.qty + d);
+        render(); resetIdle();
+        break;
+      }
+      case 'confirm-add': {
+        const item = MENU.find(m=>m.id===state.modalItem.id);
+        const size = item.sizes ? item.sizes[state.modalItem.sizeIdx] : null;
+        const addons = (item.addons||[]).filter((_,i)=>state.modalItem.addons.includes(i));
+        addToCart(item, size, addons, state.modalItem.qty);
+        setState({modalItem:null});
+        break;
+      }
+      case 'close-modal': case 'close-modal-bg': setState({modalItem:null}); break;
+      case 'view-cart': setState({screen:'cart'}); break;
+      case 'go-menu': setState({screen:'menu'}); break;
+      case 'line-qty': changeQty(t.getAttribute('data-key'), parseInt(t.getAttribute('data-delta'),10)); break;
+      case 'remove-line': removeLine(t.getAttribute('data-key')); break;
+      case 'checkout': setState({screen:'pay', payStatus:null}); break;
+      case 'pay-tap': simulatePayment(); break;
+      case 'new-order': hardReset(); break;
+      case 'cancel-order': setState({showCancelConfirm:true}); break;
+      case 'close-cancel-confirm': setState({showCancelConfirm:false}); break;
+      case 'do-cancel-order': hardReset(); break;
+      case 'help': showToast(t.textContent && T[state.lang].help_toast); break;
+      case 'im-here': dismissIdle(); break;
+      case 'open-notes': setState({showNotes:true}); break;
+      case 'close-notes': setState({showNotes:false}); break;
+    }
+  });
+
+  document.addEventListener('keydown', function(e){
+    if(e.key==='Escape'){
+      if(state.modalItem) setState({modalItem:null});
+      else if(state.showCancelConfirm) setState({showCancelConfirm:false});
+      else if(state.showNotes) setState({showNotes:false});
+    }
+  });
+
+  render();
+  resetIdle();
+})();
+</script>
+</body>
+</html>
